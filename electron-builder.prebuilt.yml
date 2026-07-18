@@ -13,4 +13,4 @@ mac:
   category: public.app-category.graphics-design
 win:
   target: nsis
-artifactName: ${productName}-${version}-${arch}.${ext}
+artifactName: Vainglory-Asset-Viewer-${version}-${arch}.${ext}
