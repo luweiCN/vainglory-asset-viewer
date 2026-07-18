@@ -1,0 +1,16 @@
+appId: com.local.vainglory.assetviewer
+productName: 虚荣英雄模型查看器
+compression: maximum
+asar: true
+electronLanguages:
+  - en-US
+  - zh-CN
+files:
+  - electron/**/*
+  - package.json
+mac:
+  target: dmg
+  category: public.app-category.graphics-design
+win:
+  target: nsis
+artifactName: ${productName}-${version}-${arch}.${ext}

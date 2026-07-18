@@ -1,10 +1,9 @@
-name: Build and publish release
+name: Build and publish offline installers
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
 
 permissions:
   contents: write
@@ -13,20 +12,28 @@ env:
   RUNTIME_ASSET_TAG: runtime-assets-v0.1.0
 
 jobs:
-  prepare-release:
+  prepare-releases:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - name: Create draft release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create platform release drafts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${GITHUB_REF_NAME}"
-          gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "$tag"
+          for platform in macos windows; do
+            release_tag="${GITHUB_REF_NAME}-${platform}"
+            gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+              gh release create "$release_tag" \
+                --repo "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" \
+                --draft \
+                --latest=false \
+                --title "虚荣英雄模型查看器 ${GITHUB_REF_NAME} (${platform})" \
+                --notes "完整离线安装包，已包含模型、贴图、动画和界面资源。"
+          done
 
   build:
-    needs: prepare-release
+    needs: prepare-releases
     timeout-minutes: 120
     strategy:
       fail-fast: false
@@ -34,15 +41,27 @@ jobs:
         include:
           - os: macos-latest
             name: macOS-arm64
-            args: --mac dmg --arm64
+            release: macos
+            shell_args: --mac --arm64
+            installer_args: --mac dmg --arm64
+            prepackaged: dist-shell/mac-arm64/虚荣英雄模型查看器.app
+            app_asar: dist-shell/mac-arm64/虚荣英雄模型查看器.app/Contents/Resources/app.asar
             extension: dmg
           - os: macos-latest
             name: macOS-x64
-            args: --mac dmg --x64
+            release: macos
+            shell_args: --mac --x64
+            installer_args: --mac dmg --x64
+            prepackaged: dist-shell/mac/虚荣英雄模型查看器.app
+            app_asar: dist-shell/mac/虚荣英雄模型查看器.app/Contents/Resources/app.asar
             extension: dmg
           - os: windows-latest
             name: Windows-x64
-            args: --win nsis --x64
+            release: windows
+            shell_args: --win --x64
+            installer_args: --win nsis --x64
+            prepackaged: dist-shell/win-unpacked
+            app_asar: dist-shell/win-unpacked/resources/app.asar
             extension: exe
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.name }}
@@ -54,7 +73,26 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Download build resources
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: |
+          npm ci
+          python -m pip install --disable-pip-version-check zstandard
+
+      - name: Build platform shell
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: >-
+          npx electron-builder --dir ${{ matrix.shell_args }}
+          --config electron-builder.prebuilt.yml
+          --config.directories.output=dist-shell
+          --publish never
+
+      - name: Restore complete offline application
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,41 +100,45 @@ jobs:
           mkdir -p .runtime-assets
           gh release download "$RUNTIME_ASSET_TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern "runtime-*.zip" \
+            --pattern "runtime-app.asar.zst.part-*" \
             --dir .runtime-assets
-          for archive in .runtime-assets/*.zip; do
-            tar -xf "$archive"
-          done
-          rm -rf .runtime-assets
+          python scripts/restore-release-app.py \
+            --parts-dir .runtime-assets \
+            --output "${{ matrix.app_asar }}"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Sign macOS application locally
+        if: runner.os == 'macOS'
+        shell: bash
+        run: codesign --force --deep --sign - "${{ matrix.prepackaged }}"
 
-      - name: Prepare deduplicated offline resources
-        run: npm run release:prepare --silent
-
-      - name: Build installer
+      - name: Build offline installer
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder ${{ matrix.args }} --config.directories.output=dist --publish never
+        run: >-
+          npx electron-builder ${{ matrix.installer_args }}
+          --prepackaged "${{ matrix.prepackaged }}"
+          --config electron-builder.prebuilt.yml
+          --config.directories.output=dist
+          --publish never
 
-      - name: Upload installer to draft release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload installer to platform release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          release_tag="${GITHUB_REF_NAME}-${{ matrix.release }}"
           for installer in dist/*.${{ matrix.extension }}; do
-            gh release upload "$GITHUB_REF_NAME" "$installer" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$release_tag" "$installer" --repo "$GITHUB_REPOSITORY" --clobber
           done
 
-  publish-release:
-    if: startsWith(github.ref, 'refs/tags/')
+  publish-releases:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Publish completed release
+      - name: Publish completed platform releases
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+        run: |
+          gh release edit "${GITHUB_REF_NAME}-macos" --repo "$GITHUB_REPOSITORY" --draft=false
+          gh release edit "${GITHUB_REF_NAME}-windows" --repo "$GITHUB_REPOSITORY" --draft=false
