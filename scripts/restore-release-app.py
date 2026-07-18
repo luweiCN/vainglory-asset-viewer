@@ -57,6 +57,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parts-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--delete-parts", action="store_true")
     args = parser.parse_args()
 
     parts = [args.parts_dir / name for name in PART_NAMES]
@@ -83,6 +84,10 @@ def main() -> None:
     if args.output.stat().st_size != EXPECTED_APP_SIZE:
         args.output.unlink(missing_ok=True)
         raise SystemExit("Restored app.asar size mismatch")
+
+    if args.delete_parts:
+        for part in parts:
+            part.unlink()
 
     print(f"Restored {args.output} ({EXPECTED_APP_SIZE} bytes)")
 

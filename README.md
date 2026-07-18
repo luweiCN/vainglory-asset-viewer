@@ -4,7 +4,7 @@
 
 ## 下载
 
-请从 [GitHub Releases](../../releases) 下载对应平台的完整安装包。macOS 和 Windows 分为两个 Release，安装包已经包含运行所需的模型、贴图、动画和界面资源，安装后无需另外下载游戏数据。
+请从 [GitHub Releases](../../releases) 下载对应平台的完整安装包。同一个版本的 Release 同时提供 macOS 与 Windows 安装包；安装包已经包含运行所需的模型、贴图、动画和界面资源，安装后无需另外下载游戏数据。
 
 ## 支持平台
 
@@ -19,4 +19,4 @@ npm ci
 npm run electron:start
 ```
 
-公开仓库不提交游戏资源、构建缓存、历史备份和安装包。版本标签触发 GitHub Actions，使用固定版本、经过校验的完整应用资源分别生成 macOS 与 Windows 离线安装包。
+公开仓库不提交游戏资源、构建缓存、历史备份和安装包。版本标签触发 GitHub Actions，将标签对应的界面与运行时代码覆盖进固定版本、经过校验的离线资源，再生成 macOS 与 Windows 安装包。

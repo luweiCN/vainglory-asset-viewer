@@ -1,6 +1,12 @@
 name: Build and publish offline installers
 
 on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing or new release tag, for example v0.1.0
+        required: true
+        type: string
   push:
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
@@ -9,31 +15,27 @@ permissions:
   contents: write
 
 env:
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
   RUNTIME_ASSET_TAG: runtime-assets-v0.1.0
 
 jobs:
-  prepare-releases:
-    if: startsWith(github.ref, 'refs/tags/')
+  prepare-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Create platform release drafts
+      - name: Create release draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for platform in macos windows; do
-            release_tag="${GITHUB_REF_NAME}-${platform}"
-            gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-              gh release create "$release_tag" \
-                --repo "$GITHUB_REPOSITORY" \
-                --target "$GITHUB_SHA" \
-                --draft \
-                --latest=false \
-                --title "虚荣英雄模型查看器 ${GITHUB_REF_NAME} (${platform})" \
-                --notes "完整离线安装包，已包含模型、贴图、动画和界面资源。"
-          done
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --draft \
+              --title "虚荣英雄模型查看器 ${RELEASE_TAG}" \
+              --notes "完整离线安装包，已包含模型、贴图、动画和界面资源。"
 
   build:
-    needs: prepare-releases
+    needs: prepare-release
     timeout-minutes: 120
     strategy:
       fail-fast: false
@@ -41,7 +43,6 @@ jobs:
         include:
           - os: macos-latest
             name: macOS-arm64
-            release: macos
             shell_args: --mac --arm64
             installer_args: --mac dmg --arm64
             prepackaged: dist-shell/mac-arm64/虚荣英雄模型查看器.app
@@ -49,7 +50,6 @@ jobs:
             extension: dmg
           - os: macos-latest
             name: macOS-x64
-            release: macos
             shell_args: --mac --x64
             installer_args: --mac dmg --x64
             prepackaged: dist-shell/mac/虚荣英雄模型查看器.app
@@ -57,7 +57,6 @@ jobs:
             extension: dmg
           - os: windows-latest
             name: Windows-x64
-            release: windows
             shell_args: --win --x64
             installer_args: --win nsis --x64
             prepackaged: dist-shell/win-unpacked
@@ -92,7 +91,7 @@ jobs:
           --config.directories.output=dist-shell
           --publish never
 
-      - name: Restore complete offline application
+      - name: Restore complete offline resources
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -104,7 +103,15 @@ jobs:
             --dir .runtime-assets
           python scripts/restore-release-app.py \
             --parts-dir .runtime-assets \
-            --output "${{ matrix.app_asar }}"
+            --output .runtime-assets/base-app.asar \
+            --delete-parts
+
+      - name: Assemble application from tagged source
+        run: >-
+          node scripts/assemble-release-app.cjs
+          --base-asar .runtime-assets/base-app.asar
+          --output "${{ matrix.app_asar }}"
+          --consume-base
 
       - name: Sign macOS application locally
         if: runner.os == 'macOS'
@@ -122,23 +129,20 @@ jobs:
           --config.directories.output=dist
           --publish never
 
-      - name: Upload installer to platform release
+      - name: Upload installer
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          release_tag="${GITHUB_REF_NAME}-${{ matrix.release }}"
           for installer in dist/*.${{ matrix.extension }}; do
-            gh release upload "$release_tag" "$installer" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$RELEASE_TAG" "$installer" --repo "$GITHUB_REPOSITORY" --clobber
           done
 
-  publish-releases:
+  publish-release:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Publish completed platform releases
+      - name: Publish completed release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release edit "${GITHUB_REF_NAME}-macos" --repo "$GITHUB_REPOSITORY" --draft=false
-          gh release edit "${GITHUB_REF_NAME}-windows" --repo "$GITHUB_REPOSITORY" --draft=false
+        run: gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

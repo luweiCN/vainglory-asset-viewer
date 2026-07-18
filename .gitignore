@@ -17,7 +17,7 @@ task_plan.md
 !/extracted/tools/
 !/extracted/viewer/
 /extracted/viewer/*
-!/extracted/viewer/app.js
+!/extracted/viewer/*.js
 !/extracted/viewer/index.html
 !/extracted/viewer/styles.css
 !/extracted/viewer/README.md
