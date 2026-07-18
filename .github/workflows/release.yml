@@ -1,0 +1,102 @@
+name: Build and publish release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  RUNTIME_ASSET_TAG: runtime-assets-v0.1.0
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "$tag"
+
+  build:
+    needs: prepare-release
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS-arm64
+            args: --mac dmg --arm64
+            extension: dmg
+          - os: macos-latest
+            name: macOS-x64
+            args: --mac dmg --x64
+            extension: dmg
+          - os: windows-latest
+            name: Windows-x64
+            args: --win nsis --x64
+            extension: exe
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Download build resources
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .runtime-assets
+          gh release download "$RUNTIME_ASSET_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "runtime-*.zip" \
+            --dir .runtime-assets
+          for archive in .runtime-assets/*.zip; do
+            tar -xf "$archive"
+          done
+          rm -rf .runtime-assets
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare deduplicated offline resources
+        run: npm run release:prepare --silent
+
+      - name: Build installer
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder ${{ matrix.args }} --config.directories.output=dist --publish never
+
+      - name: Upload installer to draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for installer in dist/*.${{ matrix.extension }}; do
+            gh release upload "$GITHUB_REF_NAME" "$installer" --repo "$GITHUB_REPOSITORY" --clobber
+          done
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish completed release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

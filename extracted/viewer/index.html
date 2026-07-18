@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>虚荣英雄模型查看器</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="sidebar model-sidebar">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">虚荣资源</p>
+            <h1>英雄模型查看器</h1>
+          </div>
+          <div class="count" id="modelCount">0</div>
+        </header>
+
+        <section class="asset-filter-panel" aria-label="模型过滤">
+          <fieldset class="preview-kind">
+            <legend>模型类别</legend>
+            <div class="segmented" id="previewModeControl" aria-label="模型类别">
+              <button type="button" data-preview-mode="skinned" aria-pressed="true">
+                <strong>动态模型</strong>
+                <small>动作、骨架、特效部件</small>
+              </button>
+              <button type="button" data-preview-mode="static" aria-pressed="false">
+                <strong>静态模型</strong>
+                <small>外观、材质、线框</small>
+              </button>
+            </div>
+          </fieldset>
+
+          <label id="staticFormatLabel" class="select compact-select" hidden>
+            <span>静态来源</span>
+            <select id="formatSelect">
+              <option value="skinned" selected hidden>动态模型</option>
+              <option value="pbr" data-description="优先使用已恢复材质和贴图的英雄皮肤模型。">材质模型</option>
+              <option value="all" data-description="包含全部已转 GLB 的资源，适合查找非英雄或遗漏模型。">全部资源模型</option>
+              <option value="textured" data-description="旧版贴图和 MTL 转换结果，适合对比老资源贴图。">旧版贴图模型</option>
+              <option value="glb" data-description="游戏包里直接拆出的原始 GLB，尽量少做额外处理。">原始 GLB</option>
+              <option value="obj" data-description="OBJ 和 MTL 资源的几何预览，适合排查旧模型结构。">OBJ 线框模型</option>
+            </select>
+          </label>
+
+          <label class="search">
+            <span>英雄 / 搜索</span>
+            <div class="combo-shell">
+              <div class="combo-field">
+                <input
+                  id="searchInput"
+                  type="search"
+                  placeholder="搜索英雄、皮肤或文件..."
+                  autocomplete="off"
+                />
+                <button id="heroDropdownButton" class="combo-trigger" type="button" title="展开英雄列表" aria-label="展开英雄列表"></button>
+                <button id="clearSearchButton" class="combo-clear" type="button" title="清空英雄和搜索条件" aria-label="清空英雄和搜索条件"></button>
+              </div>
+              <div id="heroSearchOptions" class="combo-menu" role="listbox" hidden></div>
+            </div>
+            <select id="characterSelect" hidden>
+              <option value="">全部英雄</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="model-picker" aria-label="英雄模型列表">
+          <div class="list" id="modelList" aria-label="英雄模型列表"></div>
+        </section>
+
+      </aside>
+
+      <section class="stage">
+        <div class="toolbar">
+          <div>
+            <p id="modelPath" class="path">未加载模型</p>
+            <p id="modelStats" class="stats">从左侧选择一个英雄或皮肤。</p>
+          </div>
+        </div>
+        <div class="viewport" id="viewport">
+          <div id="animationActionControl" class="viewport-animation-control">
+            <select id="animationSelect" disabled aria-label="动作">
+              <option value="">没有可用动作</option>
+            </select>
+          </div>
+          <div class="viewport-actions" aria-label="画布操作">
+            <button id="frameButton" class="canvas-action-button" type="button" title="把模型重新居中到画面">居中模型</button>
+          </div>
+          <div id="backgroundControl" class="viewport-background-control" aria-label="背景设置">
+            <button
+              id="backgroundPanelToggle"
+              class="canvas-action-button background-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="backgroundPanel"
+            >
+              背景
+            </button>
+            <div id="backgroundPanel" class="background-panel" hidden>
+              <div class="background-control-row">
+                <span>颜色</span>
+                <div class="background-swatches" role="group" aria-label="背景颜色">
+                  <button class="background-swatch" type="button" data-background-color="black" aria-pressed="true" title="黑色" style="--background-swatch: #0b0c0a">
+                    <span>黑色</span>
+                  </button>
+                  <button class="background-swatch" type="button" data-background-color="charcoal" aria-pressed="false" title="深灰" style="--background-swatch: #242721">
+                    <span>深灰</span>
+                  </button>
+                  <button class="background-swatch" type="button" data-background-color="light" aria-pressed="false" title="浅灰" style="--background-swatch: #c7c8bf">
+                    <span>浅灰</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="camera-help" aria-label="视角操作提示">
+            <span>按住左键拖动：旋转模型</span>
+            <span>滚动滚轮：拉近或拉远</span>
+            <span>按住右键或中键拖动：平移画面</span>
+          </div>
+          <div class="empty" id="emptyState">
+            <strong>选择一个模型预览</strong>
+            <span>从左侧列表选择英雄和皮肤。</span>
+          </div>
+        </div>
+        <div class="timeline-panel">
+          <section id="animationPlaybackPanel" class="playback-panel" aria-label="动作播放控制">
+            <input id="poseLoopToggle" type="checkbox" checked hidden />
+            <div class="player-row">
+              <div id="animationTimeline" class="timeline-row">
+                <button id="playPauseButton" class="play-toggle" type="button" aria-label="暂停动作" title="暂停动作">
+                  <span class="play-icon play-icon-pause" aria-hidden="true"></span>
+                  <span class="sr-only">暂停</span>
+                </button>
+                <input
+                  id="animationTimeRange"
+                  type="range"
+                  min="0"
+                  max="0"
+                  step="0.001"
+                  value="0"
+                  disabled
+                  aria-label="动作时间轴"
+                />
+                <span id="animationTimeText">0.00 秒 / 0.00 秒</span>
+                <span id="animationFrameText">第 0 帧</span>
+                <label class="speed-select select">
+                  <span>倍速</span>
+                  <select id="playbackSpeedSelect">
+                    <option value="0.1">0.1x</option>
+                    <option value="0.25">0.25x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                    <option value="3">3x</option>
+                    <option value="4">4x</option>
+                  </select>
+                </label>
+              </div>
+              <div class="player-actions" aria-label="输出操作">
+                <button id="openExportDialogButton" type="button">导出</button>
+                <button id="openRecordDialogButton" type="button">录制</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <aside class="settings-sidebar" aria-label="显示设置">
+        <label class="select">
+          <span>光照</span>
+          <select id="lightingSelect">
+            <option value="neutral" selected data-description="带方向的立体光照，材质明暗真实、浅色面（如翅膀）不发白。日常展示用这个。">标准检视</option>
+            <option value="game" data-description="更接近实机效果，光照和高亮会更强。">游戏光照</option>
+            <option value="flat" data-description="压平明暗差异，方便排查贴图、法线或白膜。">平面检视</option>
+          </select>
+        </label>
+
+        <section id="renderControls" class="control-section" aria-label="画面显示">
+          <div class="toggle-list">
+            <label class="switch-row" title="显示模型三角面边线">
+              <input id="wireToggle" type="checkbox" />
+              <span>
+                <strong>线框</strong>
+                <small>显示模型三角面边线，用来检查网格结构。</small>
+              </span>
+            </label>
+            <label class="switch-row" title="给高亮材质加一层轻微发光">
+              <input id="bloomToggle" type="checkbox" />
+              <span>
+                <strong>辉光</strong>
+                <small>给高亮材质加一层轻微发光，更接近游戏里的发亮效果。</small>
+              </span>
+            </label>
+            <div id="animatedDisplayControls" class="toggle-list" data-preview-scope="skinned">
+              <label class="switch-row" title="显示骨骼点和骨骼连线">
+                <input id="bonesToggle" type="checkbox" />
+                <span>
+                  <strong>骨架</strong>
+                  <small>显示骨骼点和骨骼连线，用来检查模型绑定和动作是否对齐。</small>
+                </span>
+              </label>
+              <label class="switch-row" title="显示攻击拖尾、法术光片、水面或武器轨迹">
+                <input id="effectsToggle" type="checkbox" />
+                <span>
+                  <strong>特效部件</strong>
+                  <small>显示攻击拖尾、法术光片、水面或武器轨迹；可能会遮挡主体模型。</small>
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section id="modelFormControls" class="control-section" data-preview-scope="skinned" aria-label="模型形态" hidden>
+          <label class="select">
+            <span>模型形态</span>
+            <select id="modelFormSelect" disabled>
+              <option value="">该模型没有可用形态</option>
+            </select>
+            <small class="field-help">已发布皮肤默认跟随原始动作；也可手动单独检查人形、载具形态或原始组合。</small>
+          </label>
+        </section>
+
+        <section id="animationControls" class="control-section attachment-controls" data-preview-scope="skinned" aria-label="相关附属资源">
+          <label class="select">
+            <span>相关附属资源</span>
+            <select id="attachmentSelect" disabled aria-describedby="attachmentHelp">
+              <option value="">不加载附属资源</option>
+            </select>
+            <small id="attachmentHelp" class="field-help">随皮肤拆出的武器、帽子、召唤物或特效挂件；默认不加载，适合检查皮肤完整效果。</small>
+          </label>
+        </section>
+      </aside>
+    </main>
+
+    <dialog id="exportDialog" class="action-dialog" aria-labelledby="exportDialogTitle">
+      <div class="dialog-panel">
+        <header class="dialog-header">
+          <strong id="exportDialogTitle">导出当前姿势</strong>
+          <button class="dialog-close" type="button" data-dialog-close aria-label="关闭">×</button>
+        </header>
+        <div class="dialog-options">
+          <button id="exportPoseGlbButton" class="dialog-option" type="button">
+            <strong>GLB</strong>
+            <span>保留材质、贴图和层级，适合继续在 Blender、网页或其他工具里编辑。</span>
+          </button>
+          <button id="exportPoseObjButton" class="dialog-option" type="button">
+            <strong>OBJ</strong>
+            <span>通用网格格式，兼容性高；动画、骨架和部分材质信息不会一起保存。</span>
+          </button>
+          <button id="exportPoseStlButton" class="dialog-option" type="button">
+            <strong>STL</strong>
+            <span>只导出几何形状，适合快速查看体积或做 3D 打印前处理。</span>
+          </button>
+          <button id="exportPoseThreeMfButton" class="dialog-option" type="button">
+            <strong>3MF</strong>
+            <span>面向 3D 打印的包格式，可以携带贴图和材质色，比 STL 信息更完整。</span>
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="recordDialog" class="action-dialog" aria-labelledby="recordDialogTitle">
+      <div class="dialog-panel">
+        <header class="dialog-header">
+          <strong id="recordDialogTitle">录制展示视频</strong>
+          <button class="dialog-close" type="button" data-dialog-close aria-label="关闭">×</button>
+        </header>
+        <label class="record-select select">
+          <span>镜头运动</span>
+          <select id="recordCameraSelect">
+            <option value="static" selected data-description="保持当前视角不动，只录动作播放。">固定当前视角</option>
+            <option value="orbit" data-description="围绕模型转一圈，适合展示整体外观。">摄像头绕一周</option>
+            <option value="top-down" data-description="从上方角度扫过，适合看体积和姿态。">从上往下</option>
+            <option value="left-right" data-description="横向移动镜头，适合展示侧面轮廓。">从左往右</option>
+            <option value="push-in" data-description="从稍远处慢慢推近，适合展示当前皮肤细节。">缓慢推近</option>
+          </select>
+        </label>
+        <div class="record-settings-grid">
+          <label class="record-select select">
+            <span>格式</span>
+            <select id="recordFormatSelect">
+              <option value="mp4" selected data-description="H.264 MP4，优先用于 macOS 空格预览和常见播放器。">MP4 / H.264</option>
+              <option value="webm" data-description="浏览器兼容性好，文件通常更小，但 macOS 预览支持较弱。">WebM</option>
+            </select>
+          </label>
+          <label class="record-select select">
+            <span>画质</span>
+            <select id="recordQualitySelect">
+              <option value="compact" data-description="30 fps，较小文件，适合快速预览。">轻量</option>
+              <option value="high" selected data-description="60 fps，16 Mbps，默认用于清晰录制。">高清</option>
+              <option value="max" data-description="60 fps，24 Mbps，文件更大，细节保留更多。">超清</option>
+            </select>
+          </label>
+        </div>
+        <div id="recordProgress" class="record-progress" hidden>
+          <div class="record-progress-header">
+            <span id="recordProgressText">准备录制</span>
+            <span id="recordProgressPercent">0%</span>
+          </div>
+          <progress id="recordProgressBar" max="1" value="0"></progress>
+        </div>
+        <button id="recordVideoButton" class="dialog-primary" type="button">开始录制</button>
+      </div>
+    </dialog>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./app.js?v=20260717-skye-bike-transition-scale-v4"></script>
+  </body>
+</html>

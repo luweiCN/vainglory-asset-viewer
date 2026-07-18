@@ -1,0 +1,142 @@
+{
+  "name": "vainglory-asset-viewer",
+  "version": "0.1.0",
+  "description": "Vainglory hero model, material, animation, and pose export viewer.",
+  "author": "luweiCN",
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "test": "node --test $(find extracted/tests -maxdepth 1 -name '*.test.js' ! -name 'viewer_material_visual_regression.test.js' -print)",
+    "test:visual-smoke": "node --test extracted/tests/viewer_material_visual_regression.test.js",
+    "native:anchors": "node extracted/tools/current_native_anchor_audit.js && node extracted/tools/current_native_light_probe_chain_audit.js && node extracted/tools/current_native_owner_definition_audit.js && node extracted/tools/current_native_levelvisuals_schema_audit.js && node extracted/tools/level_visuals_definition_field_bridge.js && node extracted/tools/current_native_level_runtime_owner_audit.js && node extracted/tools/current_native_position_sampler_owner_audit.js && node extracted/tools/current_native_preview_string_xref_audit.js && node extracted/tools/typed_object_runtime_key_payload_audit.js && node extracted/tools/runtime_key_selector_capture_summary.js && node extracted/tools/hero_preview_profile_candidates.js && node extracted/tools/current_native_static_mesh_shaderparams_capture_targets.js && node extracted/tools/current_native_static_mesh_shaderparams_capture_summary.js && node extracted/tools/native_light_probe_runtime_evidence.js > /tmp/native_light_probe_runtime_evidence.out",
+    "native:runtime-selector:summary": "node extracted/tools/runtime_key_selector_capture_summary.js",
+    "native:staticmesh-shaderparams:refresh": "node extracted/tools/current_native_static_mesh_shaderparams_capture_targets.js && node extracted/tools/current_native_static_mesh_shaderparams_capture_summary.js",
+    "native:typed-key-payloads": "node extracted/tools/typed_object_runtime_key_payload_audit.js",
+    "material:pipeline": "node extracted/tools/material_runtime_pipeline_manifest.js && node extracted/tools/character_lit_probe_blocker_audit.js && node extracted/tools/material_runtime_pipeline_status.js && node extracted/tools/material_render_state_audit.js",
+    "material:capture:targets": "node extracted/tools/current_native_material_source_program_capture_targets.js",
+    "material:capture:summary": "node extracted/tools/current_native_material_source_program_capture_summary.js && node extracted/tools/current_native_static_mesh_shaderparams_capture_targets.js && node extracted/tools/current_native_static_mesh_shaderparams_capture_summary.js && node extracted/tools/current_native_dynamic_source_table_semantics_audit.js && node extracted/tools/current_native_material_sampler_ownership_gate_audit.js",
+    "material:capture:refresh": "npm run material:capture:targets --silent && npm run material:capture:summary --silent",
+    "effect:capture:targets": "node extracted/tools/pfx_native_callback_runtime_targets.js && node extracted/tools/effect_native_channel_capture_targets.js && node extracted/tools/current_native_layout_b_object_ac_runtime_capture_targets.js",
+    "effect:capture:summary": "node extracted/tools/pfx_native_callback_capture_summary.js && node extracted/tools/effect_native_channel_capture_summary.js && node extracted/tools/current_native_layout_b_object_ac_runtime_capture_summary.js && node extracted/tools/current_native_layout_b_object_ac_producer_gate_audit.js",
+    "effect:capture:refresh": "npm run effect:capture:targets --silent && npm run effect:capture:summary --silent",
+    "effect:projectile:gap": "node extracted/tools/effect_projectile_runtime_gap_audit.js",
+    "effect:projectile:create-bridge": "node extracted/tools/effect_projectile_create_bridge_audit.js",
+    "effect:projectile:target-dispatch": "node extracted/tools/effect_projectile_target_dispatch_audit.js",
+    "effect:projectile:vtable-slot": "node extracted/tools/effect_projectile_vtable_slot_audit.js",
+    "effect:projectile:vtable-function": "node extracted/tools/effect_projectile_vtable_function_audit.js",
+    "effect:projectile:vtable-output-layout": "node extracted/tools/effect_projectile_vtable_output_layout_audit.js",
+    "effect:projectile:vtable-callsite-payload": "node extracted/tools/effect_projectile_vtable_callsite_payload_audit.js",
+    "effect:projectile:vtable-semantic-join": "node extracted/tools/effect_projectile_vtable_semantic_join_audit.js",
+    "effect:projectile:runtime-consumer-trace": "node extracted/tools/effect_projectile_runtime_consumer_trace_audit.js",
+    "effect:projectile:current-token-window": "node extracted/tools/effect_projectile_current_token_window_audit.js",
+    "effect:projectile:current-branch-target": "node extracted/tools/effect_projectile_current_branch_target_audit.js",
+    "effect:projectile:current-field-writer-callsite": "node extracted/tools/effect_projectile_current_field_writer_callsite_audit.js",
+    "effect:projectile:current-field-reader-candidate": "node extracted/tools/effect_projectile_current_field_reader_candidate_audit.js",
+    "effect:projectile:current-field-reader-callsite-context": "node extracted/tools/effect_projectile_current_field_reader_callsite_context_audit.js",
+    "effect:projectile:current-field-reader-downstream-route": "node extracted/tools/effect_projectile_current_field_reader_downstream_route_audit.js",
+    "effect:projectile:current-field-reader-list-dispatch": "node extracted/tools/effect_projectile_current_field_reader_list_dispatch_audit.js",
+    "effect:projectile:current-token-child-object-chain": "node extracted/tools/effect_projectile_current_token_child_object_chain_audit.js",
+    "effect:projectile:current-token-child-callback-body": "node extracted/tools/effect_projectile_current_token_child_callback_body_audit.js",
+    "effect:projectile:current-token-child-class-method": "node extracted/tools/effect_projectile_current_token_child_class_method_audit.js",
+    "effect:projectile:current-token-child-evaluator-payload": "node extracted/tools/effect_projectile_current_token_child_evaluator_payload_audit.js",
+    "effect:projectile:current-token-child-payload-setter": "node extracted/tools/effect_projectile_current_token_child_payload_setter_audit.js",
+    "effect:projectile:current-token-child-payload-setter-downstream": "node extracted/tools/effect_projectile_current_token_child_payload_setter_downstream_audit.js",
+    "effect:projectile:current-token-child-manager-record-bridge": "node extracted/tools/effect_projectile_current_token_child_manager_record_bridge_audit.js",
+    "effect:projectile:current-token-child-effect-owner-candidate": "node extracted/tools/effect_projectile_current_token_child_effect_owner_candidate_audit.js",
+    "effect:projectile:current-token-child-static-pfx-owner": "node extracted/tools/effect_projectile_current_token_child_static_pfx_owner_audit.js",
+    "effect:projectile:runtime": "node extracted/tools/effect_projectile_definition_manifest.js && node extracted/tools/native_projectile_spawn_manifest.js && node extracted/tools/effect_projectile_binding_coverage_report.js && node extracted/tools/effect_projectile_runtime_gap_audit.js && node extracted/tools/effect_projectile_create_bridge_audit.js && node extracted/tools/effect_projectile_target_dispatch_audit.js && node extracted/tools/effect_projectile_vtable_slot_audit.js && node extracted/tools/effect_projectile_vtable_function_audit.js && node extracted/tools/effect_projectile_vtable_output_layout_audit.js && node extracted/tools/effect_projectile_vtable_callsite_payload_audit.js && node extracted/tools/effect_projectile_vtable_semantic_join_audit.js && node extracted/tools/effect_projectile_runtime_consumer_trace_audit.js && node extracted/tools/effect_projectile_current_token_window_audit.js && node extracted/tools/effect_projectile_current_branch_target_audit.js && node extracted/tools/effect_projectile_current_field_writer_callsite_audit.js && node extracted/tools/effect_projectile_current_field_reader_candidate_audit.js && node extracted/tools/effect_projectile_current_field_reader_callsite_context_audit.js && node extracted/tools/effect_projectile_current_field_reader_downstream_route_audit.js && node extracted/tools/effect_projectile_current_field_reader_list_dispatch_audit.js && node extracted/tools/effect_projectile_current_token_child_object_chain_audit.js && node extracted/tools/effect_projectile_current_token_child_callback_body_audit.js && node extracted/tools/effect_projectile_current_token_child_class_method_audit.js && node extracted/tools/effect_projectile_current_token_child_evaluator_payload_audit.js && node extracted/tools/effect_projectile_current_token_child_payload_setter_audit.js && node extracted/tools/effect_projectile_current_token_child_payload_setter_downstream_audit.js && node extracted/tools/effect_projectile_current_token_child_manager_record_bridge_audit.js && node extracted/tools/effect_projectile_current_token_child_effect_owner_candidate_audit.js && node extracted/tools/effect_projectile_current_token_child_static_pfx_owner_audit.js",
+    "runtime:capture:gate": "node extracted/tools/current_native_runtime_capture_gate_audit.js",
+    "runtime:capture:refresh": "npm run native:runtime-selector:summary --silent && npm run material:capture:summary --silent && npm run effect:capture:summary --silent && npm run runtime:capture:gate --silent",
+    "release:prepare": "node scripts/prepare-release-assets.cjs",
+    "electron:start": "electron .",
+    "electron:pack": "npm run release:prepare --silent && electron-builder --dir",
+    "electron:dist": "npm run release:prepare --silent && electron-builder"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "texture2ddecoder-wasm": "^1.2.2",
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.local.vainglory.assetviewer",
+    "productName": "虚荣英雄模型查看器",
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US",
+      "zh-CN"
+    ],
+    "files": [
+      "electron/**/*",
+      "extracted/viewer/**/*",
+      "!extracted/viewer/screenshots/**/*",
+      "!extracted/viewer/native-particle-callback-semantics-android.json",
+      "!extracted/viewer/effect-runtime-gaps.json",
+      "!extracted/viewer/effect-shadergraph-material-manifest.json",
+      "!extracted/viewer/app.js",
+      "!extracted/viewer/current-native-shadergraph-sampler-texdata-join-audit.json",
+      "!extracted/viewer/material-runtime-pipeline-manifest.json",
+      {
+        "from": ".release-assets/viewer",
+        "to": "extracted/viewer",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "extracted/build_resources_by_path/**/*",
+      "!extracted/build_resources_by_path/Sounds/**/*",
+      "!extracted/build_resources_by_path/Music/**/*",
+      {
+        "from": ".release-assets/effect_textures_preview",
+        "to": "extracted/effect_textures_preview",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "extracted/effect_textures_by_hash/**/*",
+      {
+        "from": ".release-assets/models",
+        "to": "extracted",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extracted/hero_assets_obj",
+        "to": "extracted/hero_assets_obj",
+        "filter": [
+          "**/*.obj"
+        ]
+      },
+      "extracted/hero_assets_skeletons_json/**/*",
+      {
+        "from": "node_modules/three",
+        "to": "node_modules/three",
+        "filter": [
+          "build/three.module.js",
+          "examples/jsm/**/*",
+          "package.json"
+        ]
+      },
+      "!**/.DS_Store",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.graphics-design"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Graphics"
+    }
+  }
+}
