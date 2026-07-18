@@ -15,8 +15,10 @@
 ## 开发
 
 ```bash
+git lfs install
+git lfs pull
 npm ci
 npm run electron:start
 ```
 
-公开仓库不提交游戏资源、构建缓存、历史备份和安装包。版本标签触发 GitHub Actions，将标签对应的界面与运行时代码覆盖进固定版本、经过校验的离线资源，再生成 macOS 与 Windows 安装包。
+模型和贴图以去重后的发布格式存放在 `assets/`，并通过 Git LFS 管理。仓库不提交重复的原始导出目录、构建缓存、历史备份和安装包。版本标签触发 GitHub Actions，将标签对应的界面与运行时代码覆盖进固定版本、经过校验的离线资源，再生成 macOS 与 Windows 安装包。
