@@ -9,6 +9,18 @@ import zstandard
 
 EXPECTED_ARCHIVE_SHA256 = "b814cc5fe60b0ecf020560731c9f5b74271a2fddbd7c1842b671b721421143ba"
 EXPECTED_APP_SIZE = 3_566_006_003
+PART_NAMES = [
+    "runtime-app.asar.zst.part-00-00",
+    "runtime-app.asar.zst.part-00-01",
+    "runtime-app.asar.zst.part-00-02",
+    "runtime-app.asar.zst.part-00-03",
+    "runtime-app.asar.zst.part-01-00",
+    "runtime-app.asar.zst.part-01-01",
+    "runtime-app.asar.zst.part-01-02",
+    "runtime-app.asar.zst.part-01-03",
+    "runtime-app.asar.zst.part-02",
+    "runtime-app.asar.zst.part-03",
+]
 
 
 class SplitArchiveReader:
@@ -47,9 +59,10 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    parts = sorted(args.parts_dir.glob("runtime-app.asar.zst.part-*"))
-    if [part.name[-2:] for part in parts] != ["00", "01", "02", "03"]:
-        raise SystemExit("Expected release archive parts 00 through 03")
+    parts = [args.parts_dir / name for name in PART_NAMES]
+    missing = [part.name for part in parts if not part.is_file()]
+    if missing:
+        raise SystemExit(f"Missing release archive parts: {', '.join(missing)}")
 
     digest = hashlib.sha256()
     for part in parts:
