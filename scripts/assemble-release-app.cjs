@@ -44,7 +44,7 @@ async function runtimeSourceFiles() {
   const viewerEntries = await fs.readdir(VIEWER_SOURCE_DIR, { withFileTypes: true });
   const viewerFiles = viewerEntries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
-    .map((entry) => path.join("extracted", "viewer", entry.name));
+    .map((entry) => path.posix.join("extracted", "viewer", entry.name));
   return [
     "electron/main.cjs",
     "package.json",
@@ -84,7 +84,8 @@ async function overlayRuntimeSources(stagingDirectory) {
 
 async function verifyPackage(output, expectedContents) {
   for (const [relativePath, expected] of expectedContents) {
-    const actual = asar.extractFile(output, relativePath);
+    const archivePath = relativePath.split(path.sep).join(path.posix.sep);
+    const actual = asar.extractFile(output, archivePath);
     if (!actual.equals(expected)) {
       throw new Error(`Packaged source differs from Git checkout: ${relativePath}`);
     }
