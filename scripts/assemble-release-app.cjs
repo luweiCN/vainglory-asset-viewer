@@ -84,7 +84,7 @@ async function overlayRuntimeSources(stagingDirectory) {
 
 async function verifyPackage(output, expectedContents) {
   for (const [relativePath, expected] of expectedContents) {
-    const archivePath = relativePath.split(path.sep).join(path.posix.sep);
+    const archivePath = path.normalize(relativePath);
     const actual = asar.extractFile(output, archivePath);
     if (!actual.equals(expected)) {
       throw new Error(`Packaged source differs from Git checkout: ${relativePath}`);
